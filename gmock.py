@@ -142,6 +142,9 @@ class mock_generator:
     def __is_virtual_function(self, tokens):
         return 'virtual' in [token for token in tokens]
 
+    def __is_operator_function(self, tokens):
+        return 'operator' in [token for token in tokens]
+
     def __is_pure_virtual_function(self, tokens):
         return len(tokens) >= 3 and                     \
                self.__is_virtual_function(tokens) and   \
@@ -150,7 +153,6 @@ class mock_generator:
                tokens[-1] == ';'
 
     def __get_result_type(self, tokens, name):
-        assert(self.__is_pure_virtual_function(tokens))
         result_type = []
         for token in tokens:
             if token in [name, 'operator']:
@@ -223,15 +225,17 @@ class mock_generator:
                 result.append(token)
             if token == '>':
                 ignore = False
+        print ('get interface'+' '.join(result))
         return ''.join(result)
 
     def __get_mock_methods(self, node, mock_methods, decl = ""):
         name = str(node.displayname, self.encode)
+        print (' name '+ name +' '+ str(node.kind))
         if node.kind == CursorKind.CXX_METHOD:
             spelling = str(node.spelling, self.encode)
             tokens = [str(token.spelling, self.encode) for token in node.get_tokens()]
             file = str(node.location.file.name, self.encode)
-            if self.__is_pure_virtual_function(tokens):
+            if not self.__is_operator_function(tokens):
                 mock_methods.setdefault(decl, [file]).append(
                     mock_method(
                          self.__get_result_type(tokens, spelling),
@@ -244,6 +248,7 @@ class mock_generator:
                 )
         elif node.kind in [CursorKind.CLASS_TEMPLATE, CursorKind.STRUCT_DECL, CursorKind.CLASS_DECL, CursorKind.NAMESPACE]:
             decl = decl == "" and name or decl + (name == "" and "" or "::") + name
+            print (' decl '+ decl +' '+ str(self.decl))
             if decl.startswith(self.decl):
                 [self.__get_mock_methods(c, mock_methods, decl) for c in node.get_children()]
         else:
